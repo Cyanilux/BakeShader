@@ -1,5 +1,7 @@
 ## BakeShader
 
+![Bake](https://user-images.githubusercontent.com/69320946/187734767-1b574014-9d53-4f83-86e3-7f06f7ad2188.gif)
+
 - Adds "Bake Shader" window (under Window/Cyanilux/BakeShader)
 	- Includes modes : Blit2D (png), Blit3D (Texture3D asset), MeshRenderer
 - Also adds "Bake" options to the "..." context menus on Material asset and MeshRenderer component
