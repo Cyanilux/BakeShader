@@ -1,0 +1,11 @@
+{
+	"name": "com.cyanilux.bakeshader",
+	"version": "1.0.0",
+	"displayName": "Bake Shader",
+	"description": "Tool for baking shaders to textures. Blit2D, Blit3D, or MeshRenderer (uses model UV). Adds options to Material & MeshRenderer context menus and Editor Window (under Window/Cyanilux/BakeShader)",
+    "keywords": [],
+	"author": {
+	  "name": "Cyanilux",
+	  "url": "https://twitter.com/Cyanilux"
+	}
+}
