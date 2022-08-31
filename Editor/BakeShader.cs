@@ -13,33 +13,7 @@ using Unity.Collections;
 	- (If BakeShader window is open, this will use resolution & path settings set there, otherwise uses defaults)
 - Should work in any render pipeline!
 
-Notes (Blit3D) :
-- Use "_SliceDepth" Float property in shader. This goes from 0 to 1 through the depth of the Texture3D
-
-Notes (MeshRenderer) :
-- Will bake using first Material only
-- Scene View must be open for Renderer baking to occur
-- For correct results, shader should be unlit and output to UV space :
-    - For graphs, use the "Bake Shader Vertex Pos" subgraph in the Position port on the Vertex stack
-        - using Position node in Fragment stage will produce different results as the above changes the vertex positions.
-        - In v12+ we can use the Custom Interpolator to pass the unmodified vertex pos through, if required.
-            - See : https://www.cyanilux.com/tutorials/intro-to-shader-graph/#custom-interpolators
-
-    - For cg/hlsl, this should work :
-
-    #pragma multi_compile _ _BAKESHADER
-
-    // in vertex function :
-    #ifdef _BAKESHADER
-        float2 remappedUV = IN.texcoord.xy * 2 - 1;
-        float3 positionOS = float3(remappedUV.x, remappedUV.y, 0);
-    #else
-        float3 positionOS = IN.vertex;
-    #end
-
-    OUT.vertex = UnityObjectToClipPos(positionOS); // Built-in RP
-    OUT.positionCS = TransformObjectToHClip(positionOS); // URP
-
+For usage instructions, see README file
 */
 
 namespace Cyan {
