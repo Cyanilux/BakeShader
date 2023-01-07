@@ -22,10 +22,10 @@
 - MeshRenderer : Renderer is drawn to Texture2D
     - Will bake using first Material only
     - Scene View must be open for Renderer baking to occur
-    - For correct results, shader should be **unlit** and **output using UV coordinates instead of vertices** :
-        - For graphs, use the provided `Bake Shader Vertex Pos` subgraph in the **Position** port on the **Vertex** stack
+    - For correct results, shader should be **unlit** and **output using UV coordinates instead of vertices** - to handle this :
+        - For graphs, use the provided `Bake Shader Vertex Pos` subgraph in the **Position** port on the **Vertex** stack. Also use **Render Face : Both** in graph settings.
             - Note that using the `Position` node in **Fragment** stage will now produce different results, as this changes the vertex positions. In v12+ we can avoid this by using a **Custom Interpolator** to pass the unmodified vertex pos through, if required. See : https://www.cyanilux.com/tutorials/intro-to-shader-graph/#custom-interpolators
-        - For cg/hlsl, this should work (though some variables may need renaming) :
+        - For cg/hlsl, this should work (though some variables may need renaming). The pass should also specify `Cull Off` :
 
 ```
 #pragma multi_compile _ _BAKESHADER
