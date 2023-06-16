@@ -21,18 +21,24 @@ namespace Cyan {
     public class BakeShader {
 
         private static int delayBaking = 1;     // (in seconds)
-		private static int blit3DSliceOffsetProperty = Shader.PropertyToID("_SliceDepth");
+		private static int blit3DSliceProperty = Shader.PropertyToID("_Slice"); // Used for Texture3D and Flipbook baking
         private static GlobalKeyword bakeShaderKeyword = GlobalKeyword.Create("_BAKESHADER");
 
         // -----------------------------------------------------------
 
 		#region EditorWindow
 
-		public enum BakeType { Blit2D, Blit3D, MeshRenderer }
+		public enum BakeType {
+			Texture2D,
+			Texture3D,
+			MeshRenderer,
+			Flipbook
+		}
 
 		private class BakeShaderWindow : EditorWindow {
 
 			public Vector3Int res3D = new Vector3Int(128, 128, 128);
+            public Vector3Int resFlipbook = new Vector3Int(256, 256, 32);
 			public Vector2Int res2D = new Vector2Int(2048, 2048);
 			public BakeType bakeType;
 			public MeshRenderer meshRenderer;
@@ -43,9 +49,14 @@ namespace Cyan {
 				EditorGUILayout.LabelField("Settings", EditorStyles.boldLabel);
 				bakeType = (BakeType) EditorGUILayout.EnumPopup("Bake Type", bakeType);
 
-				if (bakeType == BakeType.Blit3D){
+				if (bakeType == BakeType.Texture3D){
 					res3D = EditorGUILayout.Vector3IntField("Resolution", res3D);
-				}else{
+				}else if (bakeType == BakeType.Flipbook){
+					Vector2Int res = EditorGUILayout.Vector2IntField("Frame Resolution", new Vector2Int(resFlipbook.x, resFlipbook.y));
+                    resFlipbook.x = res.x;
+                    resFlipbook.y = res.y;
+                    resFlipbook.z = EditorGUILayout.IntField("Frame Count", resFlipbook.z);
+                }else{
 					res2D = EditorGUILayout.Vector2IntField("Resolution", res2D);
 				}
 				if (bakeType == BakeType.MeshRenderer){
@@ -64,12 +75,14 @@ namespace Cyan {
 			}
 
 			public void Bake(){
-				if (bakeType == BakeType.Blit2D){
+				if (bakeType == BakeType.Texture2D){
 					BakeShader.Blit2D(material, res2D, path);
-				}else if (bakeType == BakeType.Blit3D){
+				}else if (bakeType == BakeType.Texture3D){
 					BakeShader.Blit3D(material, res3D, path);
 				}else if (bakeType == BakeType.MeshRenderer){
 					BakeShader.Renderer(meshRenderer, res2D, path);
+				}else if (bakeType == BakeType.Flipbook){
+					BakeShader.Blit3D(material, resFlipbook, path, true);
 				}
 			}
 
@@ -99,7 +112,7 @@ namespace Cyan {
 			Renderer(meshRenderer, res2D, path);
         }
         
-		[MenuItem("CONTEXT/Material/Bake/Blit to Texture2D (png)")]
+		[MenuItem("CONTEXT/Material/Bake/Texture2D (png)")]
 		private static void ContextMenu_Blit2D(MenuCommand command) {
 			Vector2Int res2D = new Vector2Int(2048, 2048);
 			string path = "BakedTextures";
@@ -112,7 +125,7 @@ namespace Cyan {
 			Blit2D(material, res2D, path);
 		}
 
-		[MenuItem("CONTEXT/Material/Bake/Blit to Texture3D")]
+		[MenuItem("CONTEXT/Material/Bake/Texture3D")]
 		private static void ContextMenu_Bake3D(MenuCommand command) {
 			Vector3Int res3D = new Vector3Int(128, 128, 128);
 			string path = "BakedTextures";
@@ -123,6 +136,19 @@ namespace Cyan {
 			}
 			Material material = (Material)command.context;
 			Blit3D(material, res3D, path);
+		}
+
+		[MenuItem("CONTEXT/Material/Bake/Flipbook")]
+		private static void ContextMenu_BakeFlipbook(MenuCommand command) {
+			Vector3Int resFlipbook = new Vector3Int(256, 256, 32);
+			string path = "BakedTextures";
+			if (EditorWindow.HasOpenInstances<BakeShaderWindow>()){
+				BakeShaderWindow window = (BakeShaderWindow)EditorWindow.GetWindow(typeof(BakeShaderWindow));
+				resFlipbook = window.resFlipbook;
+				path = window.path;
+			}
+			Material material = (Material)command.context;
+			Blit3D(material, resFlipbook, path, true);
 		}
 
 		#endregion
@@ -137,7 +163,7 @@ namespace Cyan {
 
 			// Read & Save
 			Texture2D tex2D = ReadPixels2D(rt);
-			SavePNG(path, material.name + "_BakedTexture.png", tex2D.EncodeToPNG());
+			SavePNG(path, GetMaterialName(material) + "_BakedTexture", tex2D.EncodeToPNG());
 			
 			// Cleanup
 			Object.DestroyImmediate(tex2D);
@@ -145,11 +171,11 @@ namespace Cyan {
 			RenderTexture.active = null;
 		}
 
-		public static void Blit3D(Material material, Vector3Int resolution, string path){
+		public static void Blit3D(Material material, Vector3Int resolution, string path, bool saveAsFlipbook = false){
 			int w = resolution.x;
 			int h = resolution.y;
 			int d = resolution.z;
-			RenderTextureDescriptor desc = new RenderTextureDescriptor(w, d) {
+			RenderTextureDescriptor desc = new RenderTextureDescriptor(w, h) {
 				dimension = UnityEngine.Rendering.TextureDimension.Tex3D,
 				volumeDepth = d
 			};
@@ -157,7 +183,7 @@ namespace Cyan {
 
 			// Blit
 			for (int i = 0; i < d; i++) {
-				material.SetFloat(blit3DSliceOffsetProperty, ((i + 0.5f) / d));
+				material.SetFloat(blit3DSliceProperty, ((i + 0.5f) / d));
 				Graphics.Blit(null, rt, material, 0, i);
 			}
 
@@ -170,32 +196,19 @@ namespace Cyan {
 					NativeArray<Color32>.Copy(data, 0, arr, i * size, size);
 				}
 
-				string name = material.name + "_BakedTexture3D";
-				Texture3D tex = new Texture3D(w, h, d, TextureFormat.RGBA32, 0);
-				tex.name = name;
-				tex.SetPixels32(arr, 0);
-				//tex.Apply();
-
-				// Save Texture3D Asset
-				Directory.CreateDirectory(Application.dataPath + "/" + path);
-				string assetPath = "Assets/" + path + "/" + name + ".asset";
-				Object existingAsset = AssetDatabase.LoadAssetAtPath<Object>(assetPath);
-				if (existingAsset != null) {
-					if (!EditorUtility.DisplayDialog("BakeShader", 
-						"Warning : Asset at path '"+assetPath+"' already exists, override it?", 
-						"Override!", "Cancel!")) {
-						return;
-					}
+				if (saveAsFlipbook){
+					// Save as Flipbook (PNG containing all slices/frames, vertically so I don't need to reorder array...)
+					Texture2D tex = new Texture2D(w, h * d);
+                    tex.SetPixels32(arr);
+					SavePNG(path, GetMaterialName(material) + "_BakedFlipbook", tex.EncodeToPNG());
+                }else{
+					// Save as Texture3D
+					Texture3D tex = new Texture3D(w, h, d, TextureFormat.RGBA32, 0);
+					tex.SetPixels32(arr, 0);
+                    SaveTexture3DAsset(path, GetMaterialName(material) + "_BakedTexture3D", tex);
+                    RenderTexture.ReleaseTemporary(rt);
 				}
-
-				if (existingAsset == null) {
-					AssetDatabase.CreateAsset(tex, assetPath);
-				} else {
-					EditorUtility.CopySerialized(tex, existingAsset);
-				}
-				AssetDatabase.SaveAssets();
-				AssetDatabase.Refresh();
-				RenderTexture.ReleaseTemporary(rt);
+				
 			});
 		}
 
@@ -238,11 +251,11 @@ namespace Cyan {
 
 			// Read & Save
 			Texture2D tex2D = ReadPixels2D(renderTarget);
-			SavePNG(path, material.name + "_BakedTexture.png", tex2D.EncodeToPNG());
+			SavePNG(path, GetMaterialName(material) + "_BakedTexture", tex2D.EncodeToPNG());
 
 			// Enable "Alpha Is Transparency"
 			// (Unity should then stretch pixels in transparent areas, avoiding black seams around UV islands)
-			TextureImporter texImporter = (TextureImporter) AssetImporter.GetAtPath("Assets/" + path + "/" + material.name + "_BakedTexture.png");
+			TextureImporter texImporter = (TextureImporter) AssetImporter.GetAtPath("Assets/" + path + "/" + GetMaterialName(material) + "_BakedTexture.png");
 			texImporter.alphaIsTransparency = true;
 			EditorUtility.SetDirty(texImporter);
 			texImporter.SaveAndReimport();
@@ -268,7 +281,7 @@ namespace Cyan {
 		private static void SavePNG(string path, string name, byte[] bytes){
 			Directory.CreateDirectory(Application.dataPath + "/" + path);
 
-			string pathName = path + "/" + name;
+			string pathName = path + "/" + name + ".png";
 			Object existingAsset = AssetDatabase.LoadAssetAtPath<Object>("Assets/" + pathName);
 			if (existingAsset != null) {
 				if (!EditorUtility.DisplayDialog("BakeShader", 
@@ -281,6 +294,38 @@ namespace Cyan {
 			File.WriteAllBytes(Application.dataPath + "/" + pathName, bytes);
 			AssetDatabase.Refresh();
 		}
+
+		private static void SaveTexture3DAsset(string path, string name, Texture3D tex){
+			// Save Texture3D Asset
+			Directory.CreateDirectory(Application.dataPath + "/" + path);
+            tex.name = name;
+            string assetPath = "Assets/" + path + "/" + name + ".asset";
+			Object existingAsset = AssetDatabase.LoadAssetAtPath<Object>(assetPath);
+			if (existingAsset != null) {
+				if (!EditorUtility.DisplayDialog("BakeShader", 
+					"Warning : Asset at path '"+assetPath+"' already exists, override it?", 
+					"Override!", "Cancel!")) {
+					return;
+				}
+			}
+
+			if (existingAsset == null) {
+				AssetDatabase.CreateAsset(tex, assetPath);
+			} else {
+				EditorUtility.CopySerialized(tex, existingAsset);
+			}
+			AssetDatabase.SaveAssets();
+			AssetDatabase.Refresh();
+		}
+
+		private static string GetMaterialName(Material material){
+            string name = material.name;
+            if (name.StartsWith("Material/")){
+                // embedded under graph
+                name = name.Substring(9);
+            }
+            return name;
+        }
 
 		#endregion
     }
