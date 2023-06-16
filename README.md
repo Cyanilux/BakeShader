@@ -3,7 +3,7 @@
 ![Bake](https://user-images.githubusercontent.com/69320946/187734767-1b574014-9d53-4f83-86e3-7f06f7ad2188.gif)
 
 - Adds "Bake Shader" window (under Window/Cyanilux/BakeShader)
-	- Includes modes : Texture2D (png), Texture3D asset, MeshRenderer
+	- Includes modes : Texture2D (png), Texture3D asset, Flipbook, MeshRenderer
 - Also adds "Bake" options to the "..." context menus on Material asset and MeshRenderer component
 	- (If BakeShader window is open, this will use resolution & path settings set there, otherwise uses defaults mentioned below)
 - Should work in any render pipeline!
@@ -23,7 +23,7 @@
     - Result saved as Texture3D asset
     - Defaults to 128x128x128 size
 - **Flipbook**
-    - Similar to Texture3D, but slices are combined vertically into a long Texture2D
+    - Same as Texture3D, but slices are combined vertically into a long Texture2D
     - Result saved as .png, this could then be imported as a regular texture (for usage with Flipbook node later) or as a 2D Array, or 3D Texture.
     - Defaults to 256x256 size (per slice), 32 slices, (so final image size of 256x8192)
 - **MeshRenderer : Renderer is drawn to Texture2D**
