@@ -7,6 +7,7 @@
 - Also adds "Bake" options to the "..." context menus on Material asset and MeshRenderer component
 	- (If BakeShader window is open, this will use resolution & path settings set there, otherwise uses defaults mentioned below)
 - Should work in any render pipeline!
+- By default, results are saved under Assets/BakedTextures
 
 ### Setup:
 - Install via Package Manager → Add package via git URL : 
