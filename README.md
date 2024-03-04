@@ -41,7 +41,7 @@
 // in vertex function :
 #ifdef _BAKESHADER
     float2 remappedUV = IN.uv.xy * 2 - 1;
-    float3 outputPos = float3(remappedUV.x, remappedUV.y, 0);
+    float4 outputPos = float4(remappedUV.x, remappedUV.y, 0, 1);
     OUT.vertex = outputPos; // Built-in RP
     OUT.positionCS = outputPos; // URP
 #else
