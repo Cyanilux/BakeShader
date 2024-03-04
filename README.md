@@ -41,11 +41,12 @@
 // in vertex function :
 #ifdef _BAKESHADER
     float2 remappedUV = IN.uv.xy * 2 - 1;
-    float3 bakeShaderPos = float3(remappedUV.x, remappedUV.y, 0);
+    float3 outputPos = float3(remappedUV.x, remappedUV.y, 0);
+    OUT.vertex = outputPos; // Built-in RP
+    OUT.positionCS = outputPos; // URP
 #else
-    float3 bakeShaderPos = IN.vertex;
+    OUT.vertex = UnityObjectToClipPos(IN.vertex); // Built-in RP
+    OUT.positionCS = TransformObjectToHClip(IN.vertex); // URP
 #endif
-
-OUT.vertex = UnityObjectToClipPos(bakeShaderPos); // Built-in RP
-OUT.positionCS = TransformObjectToHClip(bakeShaderPos); // URP
+// (where "vertex" / "positionCS" is the common naming convention for the parameter using SV_POSITION semantic)
 ```
